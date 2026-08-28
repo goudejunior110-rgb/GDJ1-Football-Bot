@@ -1,1 +1,2 @@
-# GDJ1-Football-Bot
+python-telegram-bot==20.7
+Flask==2.3.3
