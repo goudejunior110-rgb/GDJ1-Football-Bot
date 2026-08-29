@@ -1,46 +1,37 @@
 import os
+import asyncio
 import threading
 from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
-# Flask - c'est ça qui garde Render LIVE gratuit
+# Flask - garde Render LIVE
 flask_app = Flask(__name__)
-
 @flask_app.route('/')
 def home():
-    return "GDJ1 V2.7 LIVE - Bot Telegram OK!"
+    return "GDJ1 V2.8 LIVE"
 
-@flask_app.route('/health')
-def health():
-    return "OK"
-
-# Bot Telegram
+# Telegram
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("⚽ GDJ1 V2.7 EN LIGNE !\nEnvoie: Crystal Palace - Man City")
+    await update.message.reply_text("⚽ GDJ1 V2.8 EN LIGNE !\nEnvoie: Crystal Palace - Man City")
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-    await update.message.reply_text(f"🔎 Analyse GDJ1 pour: {text}\n(Version gratuite - logique de base active)")
+    await update.message.reply_text(f"🔎 Reçu: {update.message.text}\nJe lance l'analyse...")
 
-def run_bot():
+async def bot_main():
     token = os.getenv("TELEGRAM_TOKEN")
-    if not token:
-        print("ERREUR: TELEGRAM_TOKEN manquant")
-        return
-    print(f"BOT START avec token {token[:10]}...")
-    try:
-        app = ApplicationBuilder().token(token.strip()).build()
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
-        app.run_polling()
-    except Exception as e:
-        print(f"Erreur bot: {e}")
+    print(f"BOT START token {token[:10] if token else 'MANQUANT'}...", flush=True)
+    app = ApplicationBuilder().token(token.strip()).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
+    print("BOT POLLING OK", flush=True)
+    await app.run_polling(drop_pending_updates=True)
+
+def run_bot_thread():
+    asyncio.run(bot_main())
 
 if __name__ == "__main__":
-    # Bot dans un thread
-    threading.Thread(target=run_bot, daemon=True).start()
-    # Flask en principal - Render voit le port et reste LIVE
+    threading.Thread(target=run_bot_thread, daemon=True).start()
     port = int(os.environ.get("PORT", 10000))
-    print(f"Flask démarre sur port {port}")
-    flask_app.run(host='0.0.0.0', port=port)
+    print(f"FLASK sur {port}", flush=True)
+    flask_app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
