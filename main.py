@@ -4,43 +4,44 @@ from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
-# Flask - c'est ça qui garde Render LIVE gratuit
-flask_app = Flask(__name__)
-
-@flask_app.route('/')
+# Petit serveur web pour que Render ne coupe pas le bot
+app_web = Flask(__name__)
+@app_web.route('/')
 def home():
-    return "GDJ1 V2.7 LIVE - Bot Telegram OK!"
+    return "GDJ1 Bot is Live!"
 
-@flask_app.route('/health')
-def health():
-    return "OK"
+def parse_matches(text):
+    lines = []
+    for l in text.split('\n'):
+        l=l.strip()
+        if not l: continue
+        if '–' in l or '-' in l or 'vs' in l.lower():
+            clean = l.replace(' vs ', ' – ').replace(' - ', ' – ')
+            lines.append(clean)
+    return lines
 
-# Bot Telegram
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("⚽ GDJ1 V2.7 EN LIGNE !\nEnvoie: Crystal Palace - Man City")
+    await update.message.reply_text(
+        "✅ **GDJ1 V2.1 est prêt !**\n\nEnvoie les matchs comme :\nCrystal Palace – Man City\nBayern – Stuttgart\n\nJe lance la méthode complète 🔥"
+    )
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-    await update.message.reply_text(f"🔎 Analyse GDJ1 pour: {text}\n(Version gratuite - logique de base active)")
+    matchs = parse_matches(update.message.text)
+    if not matchs:
+        await update.message.reply_text("Format : Equipe – Equipe")
+        return
+    await update.message.reply_text(f"🔎 J'ai reçu {len(matchs)} matchs. Analyse GDJ1 en cours...\n" + "\n".join(matchs))
 
 def run_bot():
-    token = os.getenv("TELEGRAM_TOKEN")
-    if not token:
-        print("ERREUR: TELEGRAM_TOKEN manquant")
-        return
-    print(f"BOT START avec token {token[:10]}...")
-    try:
-        app = ApplicationBuilder().token(token.strip()).build()
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
-        app.run_polling()
-    except Exception as e:
-        print(f"Erreur bot: {e}")
+    token = os.environ.get("TELEGRAM_TOKEN")
+    app = ApplicationBuilder().token(token).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
+    print("Bot GDJ1 lancé...")
+    app.run_polling()
 
+# Lancement des 2 en même temps
 if __name__ == "__main__":
-    # Bot dans un thread
-    threading.Thread(target=run_bot, daemon=True).start()
-    # Flask en principal - Render voit le port et reste LIVE
+    threading.Thread(target=run_bot).start()
     port = int(os.environ.get("PORT", 10000))
-    print(f"Flask démarre sur port {port}")
-    flask_app.run(host='0.0.0.0', port=port)
+    app_web.run(host='0.0.0.0', port=port)
